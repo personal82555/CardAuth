@@ -3,10 +3,11 @@
 # ============================================
 
 # Stage 1: 前端构建
-FROM node:18-alpine AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm ci --registry=https://registry.npmmirror.com
+RUN npm config set registry https://registry.npmmirror.com \
+    && npm install
 COPY frontend/ ./
 RUN npm run build
 
@@ -23,7 +24,8 @@ RUN set -ex \
         netcat-openbsd \
     && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone \
-    && docker-php-ext-install -j$(nproc) pdo pdo_mysql bcmath
+    && docker-php-ext-install -j$(nproc) pdo pdo_mysql bcmath \
+    && echo "date.timezone = Asia/Shanghai" > /usr/local/etc/php/conf.d/timezone.ini
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -31,7 +33,8 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # 后端代码
 WORKDIR /var/www
 COPY backend/composer.json backend/composer.lock* ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+RUN composer config -g policy.advisories.block false \
+    && composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 COPY backend/ ./
 
 # 前端构建产物

@@ -13,7 +13,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone=+08:00
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -27,11 +27,11 @@ services:
     container_name: cardauth-app
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "8881:80"
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
-      APP_URL: ${APP_URL:-http://localhost:8080}
+      APP_URL: ${APP_URL:-http://localhost:8881}
       DB_HOST: db
       DB_PORT: "3306"
       DB_NAME: ${DB_NAME:-card_auth}

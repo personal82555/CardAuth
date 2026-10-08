@@ -168,3 +168,33 @@ function compareVersions(string $a, string $b): int
     };
     return version_compare($normalize($a), $normalize($b));
 }
+
+/**
+ * 时间格式化为北京时间字符串
+ * 用于安装统计等接口返回，确保前端展示为北京时间
+ */
+function beijingTime(?string $value): ?string
+{
+    if ($value === null || $value === '' || $value === '0000-00-00 00:00:00') {
+        return $value;
+    }
+    try {
+        $dt = new \DateTimeImmutable($value, new \DateTimeZone(date_default_timezone_get() ?: 'UTC'));
+        return $dt->setTimezone(new \DateTimeZone('Asia/Shanghai'))->format('Y-m-d H:i:s');
+    } catch (\Throwable $e) {
+        return $value;
+    }
+}
+
+/**
+ * 将记录中多个时间字段转为北京时间
+ */
+function beijingTimeFields(array $row, array $fields): array
+{
+    foreach ($fields as $field) {
+        if (array_key_exists($field, $row)) {
+            $row[$field] = beijingTime($row[$field]);
+        }
+    }
+    return $row;
+}

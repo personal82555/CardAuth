@@ -23,8 +23,14 @@ PAYMENT_API_URL=${PAYMENT_API_URL:-}
 PAYMENT_APP_ID=${PAYMENT_APP_ID:-}
 PAYMENT_APP_KEY=${PAYMENT_APP_KEY:-}
 EOF
-    chmod 600 /var/www/.env
+    chmod 644 /var/www/.env
     echo ">>> .env generated"
+fi
+
+# 时区：统一北京时间
+export TZ=Asia/Shanghai
+if [ ! -f /usr/local/etc/php/conf.d/timezone.ini ]; then
+    echo "date.timezone = Asia/Shanghai" > /usr/local/etc/php/conf.d/timezone.ini
 fi
 
 # 等待 MySQL 就绪
@@ -33,6 +39,9 @@ until nc -z ${DB_HOST} ${DB_PORT} 2>/dev/null; do
     sleep 2
 done
 echo ">>> MySQL is ready"
+
+# 确保 MySQL 会话时区为北京时间
+mysql -h"${DB_HOST}" -P"${DB_PORT}" -u"${DB_USER}" -p"${DB_PASS}" -e "SET GLOBAL time_zone='+08:00';" 2>/dev/null || true
 
 # 启动 Supervisor (Nginx + PHP-FPM)
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf

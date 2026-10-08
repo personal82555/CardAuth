@@ -50,6 +50,9 @@ class InstallationController extends Controller
             $params
         );
 
+        $timeFields = ['installed_at', 'last_online_at', 'deleted_at', 'created_at', 'updated_at'];
+        $list = array_map(static fn (array $row): array => beijingTimeFields($row, $timeFields), $list);
+
         $this->success([
             'list'      => $list,
             'total'     => $total,
@@ -67,7 +70,15 @@ class InstallationController extends Controller
         $user = $this->getCurrentUser() ?: [];
         $projectId = !empty($_GET['project_id']) ? (int) $_GET['project_id'] : null;
 
-        $this->success(InstallationService::stats($user, $projectId));
+        $stats = InstallationService::stats($user, $projectId);
+        $stats['last_online_at'] = beijingTime($stats['last_online_at'] ?? null);
+        if (!empty($stats['projects']) && is_array($stats['projects'])) {
+            foreach ($stats['projects'] as $i => $row) {
+                $stats['projects'][$i] = beijingTimeFields($row, ['last_online_at']);
+            }
+        }
+
+        $this->success($stats);
     }
 
     /**
@@ -94,6 +105,7 @@ class InstallationController extends Controller
             $this->error('无权访问该安装记录', 403);
         }
 
+        $row = beijingTimeFields($row, ['installed_at', 'last_online_at', 'deleted_at', 'created_at', 'updated_at']);
         $this->success($row);
     }
 

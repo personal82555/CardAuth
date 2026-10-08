@@ -35,6 +35,11 @@ class ProjectVersionController extends Controller
             [$projectId]
         );
 
+        $list = array_map(
+            static fn (array $row): array => beijingTimeFields($row, ['created_at', 'updated_at']),
+            $list
+        );
+
         $this->success($list);
     }
 
@@ -61,6 +66,7 @@ class ProjectVersionController extends Controller
             $this->error('版本不存在', 404);
         }
 
+        $row = beijingTimeFields($row, ['created_at', 'updated_at']);
         $this->success($row);
     }
 

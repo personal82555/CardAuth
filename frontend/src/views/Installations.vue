@@ -33,7 +33,7 @@
         <div class="stat-card stat-online">
           <div class="stat-icon"><el-icon :size="32"><Timer /></el-icon></div>
           <div class="stat-info">
-            <div class="stat-value stat-value-sm">{{ stats?.last_online_at || '-' }}</div>
+            <div class="stat-value stat-value-sm">{{ formatBj(stats?.last_online_at) }}</div>
             <div class="stat-label">最后上线时间</div>
           </div>
         </div>
@@ -53,8 +53,8 @@
           <template #default="{ row }"><el-tag type="danger" size="small">{{ row.deleted }}</el-tag></template>
         </el-table-column>
         <el-table-column prop="today_new" label="今日新增" width="100" align="center" />
-        <el-table-column prop="last_online_at" label="最后上线" width="180">
-          <template #default="{ row }">{{ row.last_online_at || '-' }}</template>
+                <el-table-column prop="last_online_at" label="最后上线" width="180">
+          <template #default="{ row }">{{ formatBj(row.last_online_at) }}</template>
         </el-table-column>
       </el-table>
     </el-card>
@@ -129,9 +129,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="installed_at" label="安装时间" width="170" />
+        <el-table-column prop="installed_at" label="安装时间" width="170">
+          <template #default="{ row }">{{ formatBj(row.installed_at) }}</template>
+        </el-table-column>
         <el-table-column prop="last_online_at" label="最后上线" width="170">
-          <template #default="{ row }">{{ row.last_online_at || '-' }}</template>
+          <template #default="{ row }">{{ formatBj(row.last_online_at) }}</template>
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right" align="center">
           <template #default="{ row }">
@@ -183,9 +185,9 @@
             {{ detailRow.status === 'active' ? '存活' : '已删除' }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="安装时间">{{ detailRow.installed_at }}</el-descriptions-item>
-        <el-descriptions-item label="最后上线">{{ detailRow.last_online_at || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="删除时间">{{ detailRow.deleted_at || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="安装时间">{{ formatBj(detailRow.installed_at) }}</el-descriptions-item>
+        <el-descriptions-item label="最后上线">{{ formatBj(detailRow.last_online_at) }}</el-descriptions-item>
+        <el-descriptions-item label="删除时间">{{ formatBj(detailRow.deleted_at) }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
   </div>
@@ -225,6 +227,19 @@ const filters = ref({
 
 const detailVisible = ref(false)
 const detailRow = ref(null)
+
+/** 统一展示为北京时间（后端已按 +08:00 返回；此处兜底） */
+function formatBj(value) {
+  if (!value || value === '0000-00-00 00:00:00') return '-'
+  const raw = String(value).trim()
+  // 已是无时区的北京时间字符串则直接展示
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)) return raw
+  const d = new Date(raw.includes('T') || raw.includes('+') || raw.includes('Z') ? raw : raw.replace(' ', 'T') + '+08:00')
+  if (Number.isNaN(d.getTime())) return raw
+  const pad = n => String(n).padStart(2, '0')
+  const bj = new Date(d.getTime() + 8 * 3600 * 1000)
+  return `${bj.getUTCFullYear()}-${pad(bj.getUTCMonth() + 1)}-${pad(bj.getUTCDate())} ${pad(bj.getUTCHours())}:${pad(bj.getUTCMinutes())}:${pad(bj.getUTCSeconds())}`
+}
 
 function buildParams() {
   const params = {

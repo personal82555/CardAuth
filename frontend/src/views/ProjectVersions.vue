@@ -75,7 +75,9 @@
         <el-table-column prop="changelog" label="更新说明" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">{{ row.changelog || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="created_at" label="发布时间" width="170" />
+        <el-table-column prop="created_at" label="发布时间" width="170">
+          <template #default="{ row }">{{ formatBj(row.created_at) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="240" fixed="right" align="center">
           <template #default="{ row }">
             <template v-if="canPublish">
@@ -232,6 +234,17 @@ const currentProjectName = computed(() => {
   const p = projects.value.find(i => Number(i.id) === Number(projectId.value))
   return p ? p.name : ''
 })
+
+function formatBj(value) {
+  if (!value || value === '0000-00-00 00:00:00') return '-'
+  const raw = String(value).trim()
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)) return raw
+  const d = new Date(raw.includes('T') || raw.includes('+') || raw.includes('Z') ? raw : raw.replace(' ', 'T') + '+08:00')
+  if (Number.isNaN(d.getTime())) return raw
+  const pad = n => String(n).padStart(2, '0')
+  const bj = new Date(d.getTime() + 8 * 3600 * 1000)
+  return `${bj.getUTCFullYear()}-${pad(bj.getUTCMonth() + 1)}-${pad(bj.getUTCDate())} ${pad(bj.getUTCHours())}:${pad(bj.getUTCMinutes())}:${pad(bj.getUTCSeconds())}`
+}
 
 function formatSize(bytes) {
   const n = Number(bytes || 0)
