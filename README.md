@@ -4,6 +4,18 @@
 
 > **当前版本：v1.1.1** · 更新日志见 [CHANGELOG.md](./CHANGELOG.md)
 
+## 界面预览
+
+> 截图为示例/公开页，敏感信息已打码或使用占位符。
+
+| 登录页 | 系统文档（含自动发卡说明） |
+|--------|---------------------------|
+| ![登录](docs/screenshots/login.png) | ![文档](docs/screenshots/docs.png) |
+
+- 文档页：`/#/docs`（系统介绍、自动发卡、安装统计与版本推送、API 对接）
+- 登录页：`/#/login`
+- 购买中心：`/#/shop`
+
 ## 技术栈
 
 | 层 | 技术 |
@@ -27,6 +39,7 @@
 - 在线授权（直接创建授权，不依赖卡密；代理按代理价扣费）
 - 代理余额体系（充值记录、扣费追溯、额度查询）
 - 订单管理（代客手动完成 / 手动确认）
+- **自动发卡（IPTV/App 直购闭环）**：支付成功后自动从未用卡池取卡并绑定机器码（v1.1 补丁）
 - 在线购买商城（公开页面，支持 epay/codepay 支付回调）
 - **安装统计**：项目安装次数、存活/已删除、最后上线时间（v1.1.0）
 - **版本推送**：上传安装包并推送客户端下载，支持强制更新提示（v1.1.0）
@@ -44,6 +57,29 @@
 - `/docs` 系统介绍与使用文档（含安装统计/版本推送说明）
 - `/installations` 安装统计（v1.1.0）
 - `/project-versions` 版本推送（v1.1.0）
+
+### 订单支付后如何发卡
+
+支付成功（异步回调 / 同步完成 / 手动补单 / 免费商品）统一走 `OrderController::processOrderPaid`：
+
+| 场景 | 行为 |
+|------|------|
+| 订单含 `bot_qq` + `contact_qq` | 创建或续费 QQ 授权记录（`ca_authorizations`） |
+| 订单**不含** `bot_qq`（App/IPTV 直购） | **自动发卡**：从同项目同套餐的未用卡池取 1 张，绑定机器码后标记为已使用 |
+| 卡池无未用卡 | 订单仍标记为已支付，`card_id` 为空，请在卡密管理补卡后手动处理 |
+
+**自动发卡机器码约定：** 下单时把电视/App 机器码写入 `contact_info`，格式：
+
+```text
+MACHINE:TV-XXXXXX
+```
+
+示例：`MACHINE:TV-E2E-TEST`。系统用正则 `MACHINE:([A-Za-z0-9\-_]+)` 解析；未填写时使用 `AUTO-{订单号}` 占位并仍完成绑定。
+
+发卡结果：
+- 卡密 `status=used`，`bind_info` 含 `machine_id / order_no / device_info=auto-delivery / first_bind_at`
+- 订单写入 `card_id`，可在订单详情、导出中查看卡密
+- 支付成功接口 / `GET /api/public/orders/query` 可返回关联卡密
 
 ## 快速开始
 
@@ -388,11 +424,17 @@ Content-Type: application/json
   "card_type_id": 1,
   "amount": 29.90,
   "pay_type": "wxpay",
-  "contact_qq": "987654321",
-  "bot_qq": "123456789",
-  "coupon_code": ""             // 可选，优惠码
+  "contact_qq": "987654321",           // QQ授权场景选填
+  "bot_qq": "123456789",               // QQ授权场景选填；填写则走授权续费/新建
+  "contact_info": "MACHINE:TV-123456", // App/IPTV 自动发卡：写入机器码
+  "coupon_code": ""                    // 可选，优惠码
 }
 ```
+
+**自动发卡说明（App/IPTV 直购）：**
+- 订单**不填** `bot_qq`，且支付成功时，系统从同项目同套餐未用卡池自动取 1 张卡
+- `contact_info` 中 `MACHINE:TV-XXXX` 会被解析为绑定机器码；未填则用 `AUTO-{订单号}`
+- 自动发卡后，`GET /api/public/orders/query` 返回中可包含 `card_key`、到期时间等
 
 **响应示例：**
 ```json

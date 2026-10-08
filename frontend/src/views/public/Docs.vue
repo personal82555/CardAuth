@@ -39,6 +39,7 @@
           <li><b>授权验证</b>：REST API 实时校验卡密与机器码绑定状态</li>
           <li><b>安装统计</b>：记录安装次数、存活/已删除、最后上线时间</li>
           <li><b>版本推送</b>：上传安装包并推送客户端下载，支持强制更新提示</li>
+          <li><b>自动发卡</b>：App/IPTV 支付成功后从未用卡池自动取卡并绑定机器码</li>
         </ul>
       </div>
 
@@ -51,6 +52,28 @@
           <li><b>续期</b>：对已绑定的机器人再次使用卡密授权，自动延长有效期</li>
         </ol>
         <p class="docs-tip">卡密未使用前不限期有效；一旦绑定，有效期自激活时开始计算。请妥善保管卡密，谨防泄露。</p>
+      </div>
+
+      <div class="docs-card">
+        <div class="docs-card-head"><span>自动发卡（App/IPTV 直购）</span></div>
+        <p>支付成功后系统自动完成发卡，适合电视端 / App 内直接购买、无需人工发卡的场景。</p>
+        <ol>
+          <li>客户端下单时，在 <code>contact_info</code> 中带上机器码：<br><code>MACHINE:TV-XXXXXX</code></li>
+          <li>支付成功（回调 / 同步完成 / 管理端补单）触发自动发卡</li>
+          <li>系统从同项目、同套餐的<b>未用卡池</b>取出 1 张卡</li>
+          <li>自动绑定机器码（<code>status=used</code>），订单关联该卡密</li>
+          <li>App 用订单号调用 <code>/api/public/orders/query</code> 即可拿到卡密与到期信息</li>
+        </ol>
+        <div class="docs-code">
+          <div class="docs-code-title">contact_info 约定</div>
+          <pre>MACHINE:TV-123456
+// 未填写 MACHINE 时，系统使用 AUTO-订单号 占位并仍完成绑定</pre>
+        </div>
+        <ul>
+          <li>订单若填写了 <code>bot_qq</code> + <code>contact_qq</code>，则走 QQ 授权续费/新建，不会自动发卡</li>
+          <li>卡池无未用卡时：订单仍标记已支付，管理端需补卡后手动处理</li>
+          <li>发卡结果：卡密 <code>bind_info.device_info=auto-delivery</code>，并记录 <code>order_no</code></li>
+        </ul>
       </div>
 
       <div class="docs-card">
@@ -220,14 +243,16 @@ POST /api/public/orders — 创建订单（在服务器内支付，返回支付�
 {
   "project_id": 1, "card_type_id": 1,
   "amount": 29.90, "pay_type": "wxpay",    // wxpay | alipay | qqpay
-  "contact_qq": "987654321", "bot_qq": "123456789",
+  "contact_qq": "987654321", "bot_qq": "123456789",  // QQ授权场景选填
+  "contact_info": "MACHINE:TV-123456",     // App自动发卡：机器码
   "coupon_code": ""                        // 选填：优惠码
 }
 响应 data: { "order_no":"2026062317530410859", "pay_url":"https://…", "is_renew":false }
 
-GET /api/public/orders/query?order_no=2026062317530410859 — 订单查询
+GET /api/public/orders/query?order_no=2026062317530410859 — 订单查询（已自动发卡时含 card_key / expire_time）
 GET /api/public/cards/query?card_key=CA-XXXX — 卡密查询</pre>
         </div>
+        <p class="doc-note">App 下单时在 <code>contact_info</code> 写 <code>MACHINE:TV-XXXX</code>，支付成功后自动从未用卡池取卡并绑定机器码（详见上方「自动发卡」）。</p>
 
         <h4 class="docs-sub">8. 调用示例（CURL）</h4>
         <div class="docs-code">
@@ -258,7 +283,7 @@ curl -X POST https://你的域名/api/public/installations/heartbeat \
       <div class="docs-card">
         <div class="docs-card-head"><span>常见问题</span></div>
         <ul>
-          <li><b>付款后没有收到卡密？</b>在购买中心用订单号查询；超过 15 分钟未支付订单自动作废。</li>
+          <li><b>付款后没有收到卡密？</b>在购买中心用订单号查询；App/IPTV 订单支付成功后会自动发卡（见「自动发卡」）；超过 15 分钟未支付订单自动作废。</li>
           <li><b>卡密提示已被使用？</b>卡密一次性绑定，若需更换设备请联系管理员重置绑定。</li>
           <li><b>支持退款吗？</b>卡密一经绑定激活不支持退款，购买前请确认商品信息。</li>
           <li><b>忘记绑定的机器码？</b>用卡密在「授权查询」中即可反查。</li>

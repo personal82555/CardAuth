@@ -250,6 +250,7 @@
                   <li><b>授权验证</b>：REST API 实时校验卡密与机器码绑定状态</li>
                   <li><b>安装统计</b>：安装次数、存活/已删除、最后上线时间</li>
                   <li><b>版本推送</b>：推送最新安装包下载，支持强制更新提示</li>
+                  <li><b>自动发卡</b>：支付成功后自动取卡并绑定机器码（App/IPTV）</li>
                 </ul>
               </div>
 
@@ -287,7 +288,8 @@
                   <pre>GET  /api/public/projects                     项目/商品列表
 GET  /api/public/projects/{id}/card-types     项目套餐
 POST /api/public/orders                       创建订单 → 返回 pay_url
-GET  /api/public/orders/query?order_no=…      订单查询
+     （contact_info 可写 MACHINE:TV-XXXX，支付后自动发卡绑定）
+GET  /api/public/orders/query?order_no=…      订单查询（自动发卡后含卡密）
 POST /api/public/authorizations/verify        QQ授权验证 { bot_qq }
 GET  /api/public/authorizations/query?bot_qq=… QQ授权状态查询</pre>
                 </div>
@@ -297,7 +299,7 @@ GET  /api/public/authorizations/query?bot_qq=… QQ授权状态查询</pre>
               <div class="docs-card">
                 <div class="docs-card-head"><IconActivate /><span>常见问题</span></div>
                 <ul>
-                  <li><b>付款后没有收到卡密？</b>在「授权查询」用订单号查询；超过 15 分钟未支付订单自动作废。</li>
+                  <li><b>付款后没有收到卡密？</b>在「授权查询」用订单号查询；App/IPTV 订单支付成功会自动发卡（contact_info 含 MACHINE: 时绑定机器码）；超过 15 分钟未支付订单自动作废。</li>
                   <li><b>卡密提示已被使用？</b>卡密一次性绑定，若需更换设备请联系管理员重置绑定。</li>
                   <li><b>支持退款吗？</b>卡密一经绑定激活不支持退款，购买前请确认商品信息。</li>
                   <li><b>忘记绑定的机器码？</b>用卡密在「授权查询」中即可反查。</li>
