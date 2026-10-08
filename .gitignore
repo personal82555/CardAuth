@@ -22,6 +22,8 @@
 /backend/tmp_*.php
 /backend/test_admin.txt
 /backend/public/uploads/avatars/*
+/backend/public/uploads/packages/*
+!/backend/public/uploads/packages/.gitkeep
 /frontend/vite.config.js.timestamp-*
 
 # 系统文件

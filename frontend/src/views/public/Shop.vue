@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿<template>
 <div class="shop-app">
     <!-- ========== 全屏 Loading ========== -->
     <transition name="loader-fade">
@@ -167,7 +167,7 @@
                   <input v-model="activateForm.card_key" class="form-input" placeholder="请输入卡密" />
                 </div>
                 <div class="form-field">
-                  <label>机器人QQ <em>*</em></label>
+                  <label>机器码 <em>*</em></label>
                   <input v-model="activateForm.bot_qq" class="form-input" placeholder="5-15位数字" maxlength="15" />
                 </div>
                 <div class="form-field">
@@ -212,23 +212,99 @@
               </button>
             </div>
 
-            <!-- 机器人QQ查询 -->
+            <!-- 机器码查询 -->
             <div v-else-if="queryTab === 'bot'" key="bot" class="center-card">
               <div class="center-icon icon-orange">
                 <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               </div>
               <h2 class="center-title">授权查询</h2>
-              <p class="center-desc">按机器人QQ号查询授权绑定状态</p>
+              <p class="center-desc">按机器码号查询授权绑定状态</p>
 
               <div class="form-field">
-                <label>机器人QQ</label>
-                <input v-model="queryBotQq" class="form-input" placeholder="请输入机器人QQ号" @keyup.enter="handleQueryBot" :disabled="loading.authQuery" />
+                <label>机器码</label>
+                <input v-model="queryBotQq" class="form-input" placeholder="请输入机器码号" @keyup.enter="handleQueryBot" :disabled="loading.authQuery" />
               </div>
               <button class="btn-submit btn-warn full" :disabled="!queryBotQq.trim() || loading.authQuery" @click="handleQueryBot" type="button">
                 <span v-if="loading.authQuery" class="spinner"></span><span v-else>查询授权</span>
               </button>
             </div>
           </transition>
+          </div>
+
+          <!-- ===== 4. 使用文档 ===== -->
+          <div v-else-if="activeTab === 'docs'" class="docs-wrap">
+            <div class="docs-hero">
+              <h2 class="center-title">CardAuth 使用文档</h2>
+              <p class="center-desc">了解系统功能、购买流程与 API 对接方式</p>
+            </div>
+
+            <div class="docs-grid">
+              <div class="docs-card">
+                <div class="docs-card-head"><IconQuery /><span>系统介绍</span></div>
+                <p>CardAuth 是一套轻量级的<b>卡密（激活码）+ 机器授权管理系统</b>，提供多项目管理、卡密生成与分销、代理体系、在线支付购买及授权验证 API。适用于软件授权、机器人授权等场景。</p>
+                <ul>
+                  <li><b>多项目</b>：每个项目拥有独立商品、API Key 与卡密池</li>
+                  <li><b>卡密</b>：支持批量生成、按天/月/年设定期限、导入导出</li>
+                  <li><b>代理/分销</b>：代理充值额度、以折扣价采购并分发卡密</li>
+                  <li><b>在线支付</b>：内置易支付对接，用户可直接付款购买</li>
+                  <li><b>授权验证</b>：REST API 实时校验卡密与机器码绑定状态</li>
+                  <li><b>安装统计</b>：安装次数、存活/已删除、最后上线时间</li>
+                  <li><b>版本推送</b>：推送最新安装包下载，支持强制更新提示</li>
+                </ul>
+              </div>
+
+              <div class="docs-card">
+                <div class="docs-card-head"><IconBuy /><span>购买与激活流程</span></div>
+                <ol>
+                  <li><b>购买授权</b>：在本页「购买授权」中选择项目与商品，通过支付宝/微信完成付款，系统即时发放卡密</li>
+                  <li><b>在线授权</b>：在「在线授权」中输入卡密与机器码，完成卡密绑定</li>
+                  <li><b>授权查询</b>：在「授权查询」中可按卡密或机器码查询绑定状态与到期时间</li>
+                  <li><b>续期</b>：对已绑定的机器人再次使用卡密授权，即自动延长有效期</li>
+                </ol>
+                <p class="docs-tip">卡密未使用前不限期有效；一旦绑定，有效期自激活时开始计算。请妥善保管卡密，谨防泄露。</p>
+              </div>
+
+              <div class="docs-card docs-card-wide">
+                <div class="docs-card-head"><IconDoc /><span>开发者对接（API）— 详细文档详见 <a href="#/docs" style="color:#6758e8">系统介绍页</a></span></div>
+                <p>统一响应 <code>{"code":200,"message":"…","data":{…}}</code>；公开接口无需认证，机器码验证需请求头 <code>X-Api-Key: 项目APIKey</code>（「项目管理」中获取）。</p>
+                <div class="docs-code">
+                  <div class="docs-code-title">POST /api/public/verify　机器码授权验证</div>
+                  <pre>Header: X-Api-Key: <项目APIKey>
+{ "card_key": "CA-XXXX-XXXX",      // 必填
+  "machine_id": "UNIQUE-DEVICE-FP", // 必填：首次调用即绑定
+  "ip": "客户端IP", "device_info": "…" } // 选填</pre>
+                </div>
+                <div class="docs-code">
+                  <div class="docs-code-title">响应场景</div>
+                  <pre>首次激活   → valid:true, message:"激活成功", expire_time, is_permanent
+同机校验   → valid:true, message:"授权有效", remaining_days
+换机校验   → valid:false, message:"设备不匹配，请使用绑定的设备"
+已过期     → valid:false, message:"授权已过期"
+无卡密     → valid:false, message:"卡密不存在" / "卡密已被禁用"</pre>
+                </div>
+                <div class="docs-code">
+                  <div class="docs-code-title">其他常用接口</div>
+                  <pre>GET  /api/public/projects                     项目/商品列表
+GET  /api/public/projects/{id}/card-types     项目套餐
+POST /api/public/orders                       创建订单 → 返回 pay_url
+GET  /api/public/orders/query?order_no=…      订单查询
+POST /api/public/authorizations/verify        QQ授权验证 { bot_qq }
+GET  /api/public/authorizations/query?bot_qq=… QQ授权状态查询</pre>
+                </div>
+                <p class="docs-tip">限流：公共接口 60 秒 30 次、机器码验证 60 秒 60 次，超限返回 429；建议客户端缓存结果每 10 分钟校验一次。</p>
+              </div>
+
+              <div class="docs-card">
+                <div class="docs-card-head"><IconActivate /><span>常见问题</span></div>
+                <ul>
+                  <li><b>付款后没有收到卡密？</b>在「授权查询」用订单号查询；超过 15 分钟未支付订单自动作废。</li>
+                  <li><b>卡密提示已被使用？</b>卡密一次性绑定，若需更换设备请联系管理员重置绑定。</li>
+                  <li><b>支持退款吗？</b>卡密一经绑定激活不支持退款，购买前请确认商品信息。</li>
+                  <li><b>忘记绑定的机器码？</b>用卡密在「授权查询」中即可反查。</li>
+                  <li><b>如何成为代理？</b>在网站底部通过代理登录入口注册，审核通过后可在额度内采购卡密。</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </section>
       </transition>
@@ -252,7 +328,7 @@
                 <div class="cr-row"><span>类型</span><span>{{ cardResult.type }}</span></div>
                 <div class="cr-row"><span>有效期</span><span>{{ cardResult.expire_time || '永久有效' }}</span></div>
                 <div class="cr-divider"></div>
-                <div class="cr-row"><span>机器人QQ</span><span class="mono">{{ cardResult.bot_qq || '-' }}</span></div>
+                <div class="cr-row"><span>机器码</span><span class="mono">{{ cardResult.bot_qq || '-' }}</span></div>
                 <div class="cr-row"><span>联系人QQ</span><span class="mono">{{ cardResult.contact_qq || '-' }}</span></div>
                 <div class="cr-row" v-if="cardResult.bind_info?.machine_id"><span>绑定设备</span><span class="mono">{{ cardResult.bind_info.machine_id }}</span></div>
                 <div class="cr-row" v-if="cardResult.bound_at"><span>绑定时间</span><span>{{ cardResult.bound_at }}</span></div>
@@ -281,7 +357,7 @@
               <p class="act-success-sub">{{ activateResult?.is_renew ? '授权有效期已延长' : '卡密已成功绑定到以下机器人' }}</p>
               <div class="act-success-body">
                 <div class="act-row"><span>所属项目</span><strong>{{ activateResult.project_name }}</strong></div>
-                <div class="act-row"><span>机器人QQ</span><strong class="mono">{{ activateResult.bot_qq }}</strong></div>
+                <div class="act-row"><span>机器码</span><strong class="mono">{{ activateResult.bot_qq }}</strong></div>
                 <div class="act-row"><span>联系人QQ</span><strong class="mono">{{ activateResult.contact_qq }}</strong></div>
                 <div class="act-row"><span>卡密</span><strong class="mono">{{ activateResult.card_key }}</strong></div>
                 <div class="act-row" v-if="activateResult.expire_time"><span>到期时间</span><strong>{{ activateResult.expire_time }}</strong></div>
@@ -319,7 +395,7 @@
         </transition>
       </teleport>
 
-      <!-- 机器人QQ查询结果弹窗 -->
+      <!-- 机器码查询结果弹窗 -->
       <teleport to="body">
         <transition name="modal">
           <div v-if="queryBotDialogVisible && authQueryResult" class="modal-overlay" @click.self="queryBotDialogVisible = false">
@@ -392,7 +468,7 @@
 
               <div class="modal-body">
                 <div class="form-field modal-field">
-                  <label>机器人QQ <em>*</em></label>
+                  <label>机器码 <em>*</em></label>
                   <input v-model="buyBotQq" class="form-input" placeholder="5-15位数字" maxlength="15" />
                 </div>
                 <div class="form-field modal-field">
@@ -449,7 +525,7 @@
                   <svg class="check-svg" viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
                 <h3 class="modal-title">购买成功</h3>
-                <p class="success-sub">卡密已自动绑定到机器人QQ，请妥善保存</p>
+                <p class="success-sub">卡密已自动绑定到机器码，请妥善保存</p>
                 <div class="key-box">
                   <code class="mono">{{ orderResult?.card_key }}</code>
                   <button class="btn-sm btn-green" @click="copyCardKey" type="button">复制</button>
@@ -457,7 +533,7 @@
                 <div class="success-rows">
                   <div class="s-row"><span>订单号</span><span class="mono">{{ orderResult?.order_no }}</span></div>
                   <div class="s-row"><span>商品</span><span>{{ currentProject?.name }} {{ buyingProduct?.name }}</span></div>
-                  <div class="s-row"><span>机器人QQ</span><strong class="mono">{{ buyBotQq }}</strong></div>
+                  <div class="s-row"><span>机器码</span><strong class="mono">{{ buyBotQq }}</strong></div>
                   <div class="s-row"><span>联系人QQ</span><strong class="mono">{{ buyContactQq }}</strong></div>
                 </div>
                 <div class="modal-footer">
@@ -487,6 +563,9 @@ const IconActivate = () => h('svg', { viewBox: '0 0 16 16', width: 16, height: 1
 const IconQuery = () => h('svg', { viewBox: '0 0 16 16', width: 16, height: 16, fill: 'currentColor' }, [
   h('path', { d: 'M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z' })
 ])
+const IconDoc = () => h('svg', { viewBox: '0 0 16 16', width: 16, height: 16, fill: 'currentColor' }, [
+  h('path', { d: 'M4 1v8h1V1h6.5a.5.5 0 0 1 .354.146l1.853 1.853A.5.5 0 0 1 13.853 3.5H14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3H4v3a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5a1.5 1.5 0 0 0-.44-1.06L13.56 1.44A1.5 1.5 0 0 0 12.5 1H4zm-2.5 10h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1zm0-3h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1zm0-3h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1 0-1z' })
+])
 const CheckIcon = () => h('svg', { viewBox: '0 0 16 16', width: 14, height: 14, fill: 'currentColor' }, [
   h('path', { d: 'M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z' })
 ])
@@ -497,6 +576,7 @@ const tabs = [
   { key: 'buy', label: '购买授权', icon: IconBuy },
   { key: 'activate', label: '在线授权', icon: IconActivate },
   { key: 'query', label: '授权查询', icon: IconQuery },
+  { key: 'docs', label: '使用文档', icon: IconDoc },
 ]
 const navTabsRef = ref(null)
 const navTabRefs = ref([])
@@ -595,15 +675,30 @@ const buyFinalAmount = computed(() => {
   if (buyCouponResult.value?.valid) return buyCouponResult.value.final_amount
   return parseFloat(buyingProduct.value?.price || 0)
 })
-const payOptions = [
+const allPayOptions = [
   { value: 'alipay', label: '支付宝', icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="#1677ff"><circle cx="12" cy="12" r="10"/></svg>' },
   { value: 'wxpay', label: '微信', icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="#07c160"><circle cx="12" cy="12" r="10"/></svg>' },
   { value: 'qqpay', label: 'QQ钱包', icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="#12b7f5"><circle cx="12" cy="12" r="10"/></svg>' },
 ]
+const payOptions = computed(() => {
+  const enabled = enabledPayTypes.value.length ? enabledPayTypes.value : ['alipay', 'wxpay']
+  return allPayOptions.filter(o => enabled.includes(o.value))
+})
+const enabledPayTypes = ref(['alipay', 'wxpay'])
+async function loadPayOptions() {
+  try {
+    const res = await request.get('/public/payment/options')
+    enabledPayTypes.value = res.data.pay_types || ['alipay', 'wxpay']
+    if (!payOptions.value.some(o => o.value === payType.value)) {
+      payType.value = payOptions.value[0]?.value || 'alipay'
+    }
+  } catch { /* fallback to defaults */ }
+}
+loadPayOptions()
 
 /* ===== 查询 ===== */
 const queryTab = ref('card')
-const queryTabs = [{ key: 'card', label: '卡密查询' }, { key: 'bot', label: '机器人QQ查询' }]
+const queryTabs = [{ key: 'card', label: '卡密查询' }, { key: 'bot', label: '机器码查询' }]
 const queryCardKey = ref('')
 
 watch(queryTab, updateQuerySlider)
@@ -670,8 +765,8 @@ async function handleCheckBuyCoupon() {
 }
 
 async function handlePay() {
-  if (!buyBotQq.value.trim()) { ElMessage.error('请输入机器人QQ'); return }
-  if (!/^\d{5,15}$/.test(buyBotQq.value.trim())) { ElMessage.error('机器人QQ格式不正确（5-15位数字）'); return }
+  if (!buyBotQq.value.trim()) { ElMessage.error('请输入机器码'); return }
+  if (!/^\d{5,15}$/.test(buyBotQq.value.trim())) { ElMessage.error('机器码格式不正确（5-15位数字）'); return }
   if (!buyContactQq.value.trim()) { ElMessage.error('请输入联系人QQ'); return }
   if (!/^\d{5,15}$/.test(buyContactQq.value.trim())) { ElMessage.error('联系人QQ格式不正确（5-15位数字）'); return }
   loading.pay = true
@@ -683,8 +778,8 @@ async function handlePay() {
       bot_qq: buyBotQq.value.trim(), contact_qq: buyContactQq.value.trim(),
     })
     if (res.data.pay_url) {
-      ElMessage.success('订单创建成功，5秒后跳转支付页面')
-      setTimeout(() => { window.open(res.data.pay_url, '_blank') }, 5000)
+      ElMessage.success('订单创建成功，正在跳转支付页面...')
+      window.location.href = res.data.pay_url
     }
     pollOrderStatus(res.data.order_no)
   } catch { /* handled */ }
@@ -709,8 +804,8 @@ function copyCardKey() {
 async function handleActivate() {
   const { card_key, bot_qq, contact_qq } = activateForm
   if (!card_key.trim()) { activateError.value = '请输入卡密'; activateErrorDialogVisible.value = true; return }
-  if (!bot_qq.trim()) { activateError.value = '请输入机器人QQ'; activateErrorDialogVisible.value = true; return }
-  if (!/^\d{5,15}$/.test(bot_qq.trim())) { activateError.value = '机器人QQ格式不正确'; activateErrorDialogVisible.value = true; return }
+  if (!bot_qq.trim()) { activateError.value = '请输入机器码'; activateErrorDialogVisible.value = true; return }
+  if (!/^\d{5,15}$/.test(bot_qq.trim())) { activateError.value = '机器码格式不正确'; activateErrorDialogVisible.value = true; return }
   if (!contact_qq.trim()) { activateError.value = '请输入联系人QQ'; activateErrorDialogVisible.value = true; return }
   if (!/^\d{5,15}$/.test(contact_qq.trim())) { activateError.value = '联系人QQ格式不正确'; activateErrorDialogVisible.value = true; return }
   loading.activate = true
@@ -1864,5 +1959,50 @@ function clearQueryResults() { cardResult.value = null; cardDialogVisible.value 
   .price-amount { font-size: 32px; }
   .auth-stats { gap: 8px; }
   .stat-block { min-width: 60px; padding: 12px 8px; }
+}
+
+/* ===== 使用文档 ===== */
+.docs-wrap { display: flex; flex-direction: column; gap: 22px; max-width: 1100px; margin: 0 auto; }
+.docs-hero { text-align: center; padding: 10px 0 4px; }
+.docs-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.docs-card {
+  background: rgba(255,255,255,.72);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,.75);
+  border-radius: 18px;
+  padding: 22px 24px;
+  box-shadow: 0 8px 30px rgba(102,126,234,.10);
+  color: #333;
+  font-size: 14px;
+  line-height: 1.85;
+}
+.docs-card-head {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 16px; font-weight: 700; color: #333;
+  margin-bottom: 12px;
+}
+.docs-card-head svg { color: #7367f0; }
+.docs-card b { color: #4c40b8; }
+.docs-card ul, .docs-card ol { padding-left: 20px; margin: 8px 0; }
+.docs-card li { margin: 4px 0; }
+.docs-card code {
+  background: rgba(115,103,240,.10); color: #5b4fd0;
+  padding: 1px 6px; border-radius: 6px; font-size: 12.5px;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+}
+.docs-tip {
+  margin-top: 10px; padding: 10px 12px;
+  background: rgba(255,183,77,.14); border-left: 3px solid #f5b04c;
+  border-radius: 8px; font-size: 13px; color: #8a5a1f;
+}
+.docs-code {
+  background: #2d2b45; color: #e6e6f0; border-radius: 12px;
+  padding: 14px 16px; margin: 10px 0; overflow-x: auto;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: 12.5px; line-height: 1.7;
+}
+.docs-code-title { color: #9d94ff; font-weight: 600; margin-bottom: 6px; font-size: 12px; letter-spacing: .4px; }
+.docs-code pre { margin: 0; white-space: pre-wrap; }
+@media (max-width: 860px) {
+  .docs-grid { grid-template-columns: 1fr; }
 }
 </style>

@@ -16,6 +16,8 @@ use App\Controllers\AuthorizationController;
 use App\Controllers\CouponController;
 use App\Controllers\BlacklistController;
 use App\Controllers\NotificationController;
+use App\Controllers\InstallationController;
+use App\Controllers\ProjectVersionController;
 use App\Middleware\AuthMiddleware;
 use App\Middleware\RateLimitMiddleware;
 use App\Middleware\ApiKeyMiddleware;
@@ -41,6 +43,9 @@ $router->group('api/public', function ($router) {
     // 卡密查询
     $router->get('cards/query', [PublicController::class, 'queryCard']);
 
+    // 支付方式（前台展示用）
+    $router->get('payment/options', [PublicController::class, 'paymentOptions']);
+
     // 支付回调
     $router->get('payment/notify', [PublicController::class, 'paymentNotify']);
     $router->post('payment/notify', [PublicController::class, 'paymentNotify']);
@@ -64,6 +69,12 @@ $router->post('api/cron/notify-expiring', [NotificationController::class, 'notif
 $router->group('api/public/verify', function ($router) {
     $router->post('', [PublicController::class, 'verify']);
 }, [new ApiKeyMiddleware(), new RateLimitMiddleware(60, 60, 'verify')]);
+
+// 安装上报/检查更新 (API Key认证)
+$router->group('api/public/installations', function ($router) {
+    $router->post('check-update', [PublicController::class, 'checkUpdate']);
+    $router->post('heartbeat', [PublicController::class, 'heartbeat']);
+}, [new ApiKeyMiddleware(), new RateLimitMiddleware(60, 60, 'install')]);
 
 // ============================================
 // 认证接口 (无需JWT)
@@ -174,6 +185,24 @@ $router->group('api', function ($router) {
     $router->post('coupons', [CouponController::class, 'create']);
     $router->put('coupons/{id}', [CouponController::class, 'update']);
     $router->delete('coupons/{id}', [CouponController::class, 'delete']);
+
+    // 安装统计管理 (admin / project_admin / agent)
+    $router->get('installations', [InstallationController::class, 'list']);
+    $router->get('installations/stats', [InstallationController::class, 'stats']);
+    $router->get('installations/export', [InstallationController::class, 'export']);
+    $router->get('installations/{id}', [InstallationController::class, 'detail']);
+    $router->delete('installations/{id}', [InstallationController::class, 'delete']);
+    $router->post('installations/{id}/restore', [InstallationController::class, 'restore']);
+    $router->post('installations/batch-delete', [InstallationController::class, 'batchDelete']);
+
+    // 项目版本/安装包管理 (发布仅 admin/project_admin; agent 只读)
+    $router->get('projects/{projectId}/versions', [ProjectVersionController::class, 'list']);
+    $router->get('projects/{projectId}/versions/{id}', [ProjectVersionController::class, 'detail']);
+    $router->post('projects/{projectId}/versions', [ProjectVersionController::class, 'create']);
+    $router->put('versions/{id}', [ProjectVersionController::class, 'update']);
+    $router->put('versions/{id}/force', [ProjectVersionController::class, 'toggleForce']);
+    $router->put('versions/{id}/latest', [ProjectVersionController::class, 'setLatest']);
+    $router->delete('versions/{id}', [ProjectVersionController::class, 'delete']);
 
     // 黑名单管理（仅管理员）
     $router->group('blacklists', function ($router) {

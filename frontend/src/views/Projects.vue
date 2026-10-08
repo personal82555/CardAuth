@@ -59,10 +59,12 @@
         <el-table-column prop="api_key" label="API Key" min-width="220" show-overflow-tooltip v-if="visibleColumns.api_key"><template #default="{ row }"><div class="key-cell"><span class="mono-text">{{ row.api_key }}</span><el-icon class="copy-icon" @click="copyToClipboard(row.api_key)" title="复制"><DocumentCopy /></el-icon></div></template></el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center" sortable="custom" v-if="visibleColumns.status"><template #default="{ row }"><el-switch v-model="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)" :disabled="!canManage" /></template></el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="180" sortable="custom" v-if="visibleColumns.created_at" />
-        <el-table-column label="操作" width="260" fixed="right" align="center" v-if="canManage">
+        <el-table-column label="操作" width="320" fixed="right" align="center" v-if="canManage">
           <template #default="{ row }">
             <el-button size="small" type="primary" link :icon="Edit" @click="showEditDialog(row)">编辑</el-button>
             <el-button size="small" type="warning" link @click="showCardTypeDialog(row)">套餐</el-button>
+            <el-button size="small" type="success" link @click="goInstallations(row)">安装统计</el-button>
+            <el-button size="small" type="info" link @click="goVersions(row)">版本管理</el-button>
             <el-button size="small" link @click="handleRegenerateKey(row)">重置Key</el-button>
             <el-button size="small" type="danger" link :icon="Delete" @click="handleDelete(row)">删除</el-button>
           </template>
@@ -113,6 +115,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useList } from '@/composables/useList'
@@ -120,6 +123,7 @@ import { useColumnSettings } from '@/composables/useColumnSettings'
 import { Plus, Delete, Download, Search, Refresh, Filter, Setting, Edit, ArrowDown, FolderOpened, CircleCheck, CircleClose, DocumentCopy } from '@element-plus/icons-vue'
 import request from '@/api'
 
+const router = useRouter()
 const userStore = useUserStore()
 const user = computed(() => userStore.user)
 const canManage = computed(() => ['admin', 'project_admin'].includes(user.value?.role))
@@ -198,6 +202,8 @@ function handleExport(format) {
   ElMessage.success('导出任务已启动')
 }
 function copyToClipboard(text) { navigator.clipboard.writeText(text).then(() => ElMessage.success('已复制')).catch(() => ElMessage.error('复制失败')) }
+function goInstallations(row) { router.push({ path: '/installations', query: { project_id: row.id } }) }
+function goVersions(row) { router.push({ path: '/project-versions', query: { project_id: row.id } }) }
 
 // 套餐管理
 const typeDialogVisible = ref(false)

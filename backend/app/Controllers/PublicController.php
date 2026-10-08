@@ -4,10 +4,12 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\Database;
 use App\Core\Validator;
+use App\Services\InstallationService;
+use App\Services\VersionService;
 
 /**
  * 公开接口控制器
- * 包含：购买页、查询页、授权验证、支付回调
+ * 包含：购买页、查询页、授权验证、安装上报、支付回调
  */
 class PublicController extends Controller
 {
@@ -21,6 +23,25 @@ class PublicController extends Controller
             "SELECT id, name, description FROM {$db->table('projects')} WHERE status = 1 AND deleted_at IS NULL ORDER BY id DESC"
         );
         $this->success($projects);
+    }
+
+    /**
+     * 已启用的支付方式列表（前台购买页展示用）
+     * GET /api/public/payment/options
+     */
+    public function paymentOptions(): void
+    {
+        $db = Database::getInstance();
+        $row = $db->fetch(
+            "SELECT `value` FROM {$db->table('configs')} WHERE `key` = 'payment_pay_types'"
+        );
+        $types = $row ? json_decode($row['value'], true) : ['alipay', 'wxpay'];
+        $valid = ['alipay', 'wxpay', 'qqpay'];
+        $types = array_values(array_filter($types, fn($t) => in_array($t, $valid, true)));
+        if (empty($types)) {
+            $types = ['alipay', 'wxpay'];
+        }
+        $this->success(['pay_types' => $types, 'payment_enabled' => $row !== null]);
     }
 
     /**
@@ -65,6 +86,17 @@ class PublicController extends Controller
         }
 
         $db = Database::getInstance();
+
+        // 校验支付方式是否已勾选启用
+        $payTypesRow = $db->fetch(
+            "SELECT `value` FROM {$db->table('configs')} WHERE `key` = 'payment_pay_types'"
+        );
+        if ($payTypesRow) {
+            $enabledPayTypes = json_decode($payTypesRow['value'], true) ?: [];
+            if (!in_array($payType, $enabledPayTypes, true)) {
+                $this->error('该支付方式未开启，请选择其他支付方式');
+            }
+        }
 
         // 验证项目
         $project = $db->fetch(
@@ -485,19 +517,120 @@ class PublicController extends Controller
     }
 
     /**
+     * 检查更新 + 上报安装/在线 (客户端调用)
+     * Header: X-Api-Key: {project_api_key}
+     * POST: {machine_id, client_version?, card_key?, device_info?}
+     */
+    public function checkUpdate(): void
+    {
+        $projectId = (int) ($_SERVER['HTTP_X_PROJECT_ID'] ?? 0);
+        $input = $this->getJsonInput();
+
+        $machineId     = trim((string) ($input['machine_id'] ?? ''));
+        $clientVersion = trim((string) ($input['client_version'] ?? ''));
+        $cardKey       = trim((string) ($input['card_key'] ?? ''));
+        $deviceInfo    = (string) ($input['device_info'] ?? '');
+        $deviceIp      = (string) ($input['ip'] ?? clientIp());
+
+        if ($machineId === '') {
+            $this->error('缺少机器码 machine_id', 400);
+        }
+
+        $cardId = null;
+        if ($cardKey !== '') {
+            $db = Database::getInstance();
+            $card = $db->fetch(
+                "SELECT id FROM {$db->table('cards')} WHERE card_key = ? AND project_id = ?",
+                [$cardKey, $projectId]
+            );
+            if ($card) {
+                $cardId = (int) $card['id'];
+            }
+        }
+
+        $upsert = InstallationService::upsert(
+            $projectId,
+            $machineId,
+            $deviceIp,
+            $deviceInfo,
+            $clientVersion,
+            $cardId,
+            $cardKey
+        );
+
+        $payload = VersionService::buildUpdatePayload($projectId, $clientVersion);
+        $payload['install_id'] = $upsert['install_id'];
+
+        // 有更新时累计下载提示次数
+        if (!empty($payload['update_available']) && !empty($payload['version'])) {
+            $db = Database::getInstance();
+            $db->execute(
+                "UPDATE {$db->table('project_versions')} SET download_count = download_count + 1
+                 WHERE project_id = ? AND version = ?",
+                [$projectId, $payload['version']]
+            );
+        }
+
+        $this->success($payload, 'ok');
+    }
+
+    /**
+     * 安装心跳 (客户端调用)
+     * Header: X-Api-Key: {project_api_key}
+     * POST: {machine_id, client_version?, card_key?, device_info?}
+     */
+    public function heartbeat(): void
+    {
+        $projectId = (int) ($_SERVER['HTTP_X_PROJECT_ID'] ?? 0);
+        $input = $this->getJsonInput();
+
+        $machineId = trim((string) ($input['machine_id'] ?? ''));
+        if ($machineId === '') {
+            $this->error('缺少机器码 machine_id', 400);
+        }
+
+        $cardKey = trim((string) ($input['card_key'] ?? ''));
+        $cardId = null;
+        if ($cardKey !== '') {
+            $db = Database::getInstance();
+            $card = $db->fetch(
+                "SELECT id FROM {$db->table('cards')} WHERE card_key = ? AND project_id = ?",
+                [$cardKey, $projectId]
+            );
+            if ($card) {
+                $cardId = (int) $card['id'];
+            }
+        }
+
+        $upsert = InstallationService::heartbeat(
+            $projectId,
+            $machineId,
+            (string) ($input['ip'] ?? clientIp()),
+            (string) ($input['device_info'] ?? ''),
+            (string) ($input['client_version'] ?? ''),
+            $cardId,
+            $cardKey
+        );
+
+        $this->success(['install_id' => $upsert['install_id']], 'ok');
+    }
+
+    /**
      * 授权验证接口 (客户端调用)
      * Header: X-Api-Key: {project_api_key}
-     * POST: {card_key, machine_id, ip, device_info}
+     * POST: {card_key, machine_id, ip, device_info, client_version?}
+     * 成功时附带更新提示字段，并更新安装 last_online_at
      */
     public function verify(): void
     {
-        $projectId = $_SERVER['HTTP_X_PROJECT_ID'] ?? 0;
+        $projectId = (int) ($_SERVER['HTTP_X_PROJECT_ID'] ?? 0);
         $input = $this->getJsonInput();
 
         $cardKey   = $input['card_key'] ?? '';
         $machineId = $input['machine_id'] ?? '';
         $deviceIp  = $input['ip'] ?? clientIp();
         $deviceInfo = $input['device_info'] ?? '';
+        $clientVersion = (string) ($input['client_version'] ?? '');
 
         if (empty($cardKey) || empty($machineId)) {
             $this->error('参数不完整', 400);
@@ -546,6 +679,20 @@ class PublicController extends Controller
                 [json_encode($bindInfo, JSON_UNESCAPED_UNICODE), $expireTime, $card['id']]
             );
 
+            // 登记安装记录
+            $upsert = InstallationService::upsert(
+                $projectId,
+                (string) $machineId,
+                (string) $deviceIp,
+                (string) $deviceInfo,
+                $clientVersion,
+                (int) $card['id'],
+                (string) $cardKey
+            );
+
+            $updatePayload = VersionService::buildUpdatePayload($projectId, $clientVersion);
+            $updatePayload['install_id'] = $upsert['install_id'];
+
             $this->success([
                 'valid'       => true,
                 'message'     => '激活成功',
@@ -553,7 +700,7 @@ class PublicController extends Controller
                 'duration_days' => $card['duration_days'],
                 'expire_time' => $expireTime,
                 'is_permanent' => $card['duration_days'] == 0,
-            ], 'ok');
+            ] + $updatePayload, 'ok');
             return;
         }
 
@@ -572,6 +719,20 @@ class PublicController extends Controller
                 return;
             }
 
+            // 授权有效：更新安装 last_online_at
+            $upsert = InstallationService::upsert(
+                $projectId,
+                (string) $machineId,
+                (string) $deviceIp,
+                (string) $deviceInfo,
+                $clientVersion,
+                (int) $card['id'],
+                (string) $cardKey
+            );
+
+            $updatePayload = VersionService::buildUpdatePayload($projectId, $clientVersion);
+            $updatePayload['install_id'] = $upsert['install_id'];
+
             $this->success([
                 'valid'        => true,
                 'message'      => '授权有效',
@@ -581,9 +742,11 @@ class PublicController extends Controller
                 'bound_at'     => $card['bound_at'],
                 'is_permanent' => $card['duration_days'] == 0,
                 'remaining_days' => $card['expire_time'] ? max(0, ceil((strtotime($card['expire_time']) - time()) / 86400)) : null,
-            ], 'ok');
+            ] + $updatePayload, 'ok');
             return;
         }
+
+        $this->success(['valid' => false, 'message' => '卡密状态异常'], 'ok');
     }
 
     /**

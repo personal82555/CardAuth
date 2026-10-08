@@ -149,3 +149,22 @@ function logger(string $action, string $targetType = '', int $targetId = 0, arra
         error_log('Logger error: ' . $e->getMessage());
     }
 }
+
+/**
+ * 语义化版本比较
+ * @return int -1 a<b, 0 a==b, 1 a>b
+ */
+function compareVersions(string $a, string $b): int
+{
+    $normalize = static function (string $v): string {
+        $v = trim($v);
+        if ($v === '') {
+            return '0.0.0';
+        }
+        if ($v[0] === 'v' || $v[0] === 'V') {
+            $v = substr($v, 1);
+        }
+        return $v;
+    };
+    return version_compare($normalize($a), $normalize($b));
+}

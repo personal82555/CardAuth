@@ -22,7 +22,6 @@ const routes = [
   {
     path: '/',
     component: () => import('@/views/layout/MainLayout.vue'),
-    redirect: '/dashboard',
     children: [
       {
         path: 'dashboard',
@@ -79,6 +78,18 @@ const routes = [
         meta: { title: '授权管理', icon: 'Lock' }
       },
       {
+        path: 'installations',
+        name: 'Installations',
+        component: () => import('@/views/Installations.vue'),
+        meta: { title: '安装统计', icon: 'Download' }
+      },
+      {
+        path: 'project-versions',
+        name: 'ProjectVersions',
+        component: () => import('@/views/ProjectVersions.vue'),
+        meta: { title: '版本推送', icon: 'Upload' }
+      },
+      {
         path: 'coupons',
         name: 'Coupons',
         component: () => import('@/views/admin/Coupons.vue'),
@@ -109,6 +120,18 @@ const routes = [
     name: 'Shop',
     component: () => import('@/views/public/Shop.vue'),
     meta: { title: '购买中心' }
+  },
+  {
+    path: '/docs',
+    name: 'IntroDocs',
+    component: () => import('@/views/public/Docs.vue'),
+    meta: { title: '系统介绍与使用文档' }
+  },
+  {
+    path: '/result',
+    name: 'PaymentResult',
+    component: () => import('@/views/public/PaymentResult.vue'),
+    meta: { title: '支付结果' }
   }
 ]
 
@@ -129,8 +152,13 @@ router.beforeEach((to, from, next) => {
   document.title = to.meta.title ? `${to.meta.title} - CardAuth` : 'CardAuth'
   const token = localStorage.getItem('access_token')
   const userRole = localStorage.getItem('user_role')
-  const publicPaths = ['/login', '/shop', '/agent/login', '/agent/register']
+  const publicPaths = ['/login', '/shop', '/agent/login', '/agent/register', '/docs', '/result']
   const isPublic = publicPaths.some(p => to.path.startsWith(p))
+
+  // 首页一律显示介绍页；管理员可从介绍页顶部进入后台
+  if (to.path === '/') {
+    return next('/docs')
+  }
 
   // 未登录访问非公开页面 -> 登录页
   if (!isPublic && !token) {

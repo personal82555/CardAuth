@@ -2,11 +2,13 @@
 
 一个轻量级的卡密（激活码）+ 机器授权管理系统，支持多项目管理、代理分销、在线支付购买，适用于软件授权、会员激活等场景。
 
+> **当前版本：v1.1.0** · 更新日志见 [CHANGELOG.md](./CHANGELOG.md)
+
 ## 技术栈
 
 | 层 | 技术 |
 |---|---|
-| 后端 | PHP 7.4+ 自研框架（Router + Middleware + Controller） |
+| 后端 | PHP 8.1+ 自研框架（Router + Middleware + Controller） |
 | 数据库 | MySQL 8.0+ |
 | 前端 | Vue 3 + Element Plus + Pinia + ECharts |
 | 构建 | Vite |
@@ -26,6 +28,8 @@
 - 代理余额体系（充值记录、扣费追溯、额度查询）
 - 订单管理（代客手动完成 / 手动确认）
 - 在线购买商城（公开页面，支持 epay/codepay 支付回调）
+- **安装统计**：项目安装次数、存活/已删除、最后上线时间（v1.1.0）
+- **版本推送**：上传安装包并推送客户端下载，支持强制更新提示（v1.1.0）
 - 黑名单系统（机器码/IP 封禁，可配置封禁策略）
 - SMTP 邮件通知（授权快到期自动发送提醒到联系人 QQ 邮箱）
 - 仪表盘统计图表（收入趋势、授权趋势、套餐销售占比）
@@ -37,6 +41,9 @@
 - `/agent/login` 代理登录
 - `/agent/register` 代理注册
 - `/shop` 自助购买（公开页面）
+- `/docs` 系统介绍与使用文档（含安装统计/版本推送说明）
+- `/installations` 安装统计（v1.1.0）
+- `/project-versions` 版本推送（v1.1.0）
 
 ## 快速开始
 
@@ -276,7 +283,87 @@ Content-Type: application/json
 }
 ```
 
-**响应格式同 1.2。**
+**响应格式同 1.2，并额外附带更新提示字段（成功时）：**
+
+```json
+{
+  "code": 200,
+  "data": {
+    "valid": true,
+    "message": "授权有效",
+    "type": "月卡",
+    "duration_days": 30,
+    "expire_time": "2026-11-01 12:00:00",
+    "is_permanent": false,
+    "remaining_days": 24,
+    "update_available": true,
+    "update_required": false,
+    "current_version": "1.0.0",
+    "latest_version": "1.2.0",
+    "version": "1.2.0",
+    "download_url": "/uploads/packages/1/pkg_1_xxx.zip",
+    "file_size": 10485760,
+    "checksum": "sha256...",
+    "changelog": "修复若干问题",
+    "min_client_version": "",
+    "is_force": 0,
+    "install_id": 123
+  }
+}
+```
+
+> 说明：`update_required` 仅作客户端强制更新提示，不阻断授权结果。
+
+### 1.3.1 安装检查更新 / 心跳（客户端）
+
+```
+POST /api/public/installations/check-update
+X-Api-Key: <项目的 API Key>
+Content-Type: application/json
+
+{
+  "machine_id": "设备唯一指纹",
+  "client_version": "1.0.0",     // 可选
+  "card_key": "CA-XXXX-XXXX",    // 可选
+  "device_info": "Windows 11"    // 可选
+}
+```
+
+**响应：**
+
+```json
+{
+  "code": 200,
+  "data": {
+    "update_available": true,
+    "update_required": true,
+    "current_version": "1.0.0",
+    "latest_version": "2.0.0",
+    "version": "2.0.0",
+    "download_url": "/uploads/packages/1/pkg_1_xxx.zip",
+    "file_size": 20971520,
+    "checksum": "sha256...",
+    "changelog": "重大更新",
+    "min_client_version": "1.1.0",
+    "is_force": 1,
+    "install_id": 123
+  }
+}
+```
+
+```
+POST /api/public/installations/heartbeat
+X-Api-Key: <项目的 API Key>
+Content-Type: application/json
+
+{ "machine_id": "设备唯一指纹", "client_version": "1.0.0", "card_key": "..." }
+```
+
+**客户端接入建议：**
+- 启动/周期心跳时调用 `check-update`
+- `update_available=true` 且 `update_required=false` → 弹出「发现新版本，是否下载？」
+- `update_required=true` → 强制更新提示（不可关闭），引导下载 `download_url`
+- 授权验证 `verify` 时也会同步更新安装记录的 `last_online_at`，并附带相同更新字段
 
 ### 1.4 获取项目列表（商城用）
 
@@ -444,6 +531,87 @@ Content-Type: application/json
   "description": "项目描述"
 }
 ```
+
+---
+
+## 四之二、安装统计与版本推送
+
+### 权限说明
+
+| 功能 | admin | project_admin | agent |
+|------|-------|---------------|-------|
+| 查看安装统计 | 全部 | 仅绑定项目 | 仅本人卡密相关 |
+| 删除/恢复安装 | ✓ | ✓ | ✗ |
+| 发布/修改/删除版本 | ✓ | ✓ | ✗（仅只读列表） |
+| 强制推送开关 | ✓ | ✓ | ✗ |
+
+### 安装统计
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/installations` | 安装列表（分页/筛选） |
+| GET | `/api/installations/stats` | 统计：总安装（含已删除）、存活、已删除、今日新增、最后上线 |
+| GET | `/api/installations/{id}` | 安装详情 |
+| DELETE | `/api/installations/{id}` | 标记已删除（软删除） |
+| POST | `/api/installations/{id}/restore` | 恢复为存活 |
+| POST | `/api/installations/batch-delete` | 批量删除 `{ids:[]}` |
+| GET | `/api/installations/export` | 导出 CSV |
+
+**统计响应示例：**
+
+```json
+{
+  "code": 200,
+  "data": {
+    "total_installs": 1280,
+    "active": 1150,
+    "deleted": 130,
+    "today_new": 12,
+    "week_new": 80,
+    "last_online_at": "2026-10-08 10:30:00",
+    "projects": [
+      {
+        "project_id": 1,
+        "project_name": "演示项目",
+        "total_installs": 500,
+        "active": 450,
+        "deleted": 50,
+        "today_new": 5,
+        "last_online_at": "2026-10-08 10:00:00"
+      }
+    ]
+  }
+}
+```
+
+列表 query 参数：`project_id`、`status`(active/deleted)、`keyword`、`date_from`、`date_to`、`page`、`page_size`。
+
+### 版本推送管理
+
+| 方法 | 路径 | 角色 | 说明 |
+|------|------|------|------|
+| GET | `/api/projects/{projectId}/versions` | 三角色 | 版本列表 |
+| GET | `/api/projects/{projectId}/versions/{id}` | 三角色 | 版本详情 |
+| POST | `/api/projects/{projectId}/versions` | admin/project_admin | 上传发布（multipart） |
+| PUT | `/api/versions/{id}` | admin/project_admin | 更新说明/强制/最低版本/状态 |
+| PUT | `/api/versions/{id}/force` | admin/project_admin | 强制推送开关 |
+| PUT | `/api/versions/{id}/latest` | admin/project_admin | 设为最新版本 |
+| DELETE | `/api/versions/{id}` | admin/project_admin | 删除版本及文件 |
+
+**发布版本（multipart/form-data）：**
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `version` | 是 | 版本号，同项目唯一 |
+| `file` | 是 | 安装包（zip/tar/gz/7z/exe/dmg/apk/msi/pkg/rar/bin，≤200MB） |
+| `changelog` | 否 | 更新说明 |
+| `is_force` | 否 | 0/1，默认 0；1=客户端强制更新提示 |
+| `min_client_version` | 否 | 低于此版本强制更新 |
+| `is_latest` | 否 | 默认 1；设为 1 时旧版本自动取消 latest |
+
+强制推送语义：仅返回 `update_required=true` 提示客户端弹窗，**不阻断** `verify` 授权。
+
+**安装次数口径：** `total_installs = COUNT(*)`（存活 + 已删除）；每次安装独立记录，同机器删除后重装会再次计入。
 
 ### 创建套餐
 

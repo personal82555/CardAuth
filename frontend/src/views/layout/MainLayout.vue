@@ -63,6 +63,14 @@
               <el-icon><Lock /></el-icon>
               <span>授权管理</span>
             </el-menu-item>
+            <el-menu-item index="/installations">
+              <el-icon><Download /></el-icon>
+              <span>安装统计</span>
+            </el-menu-item>
+            <el-menu-item index="/project-versions" v-if="canManage || isAgent">
+              <el-icon><Upload /></el-icon>
+              <span>版本推送</span>
+            </el-menu-item>
           </el-sub-menu>
 
           <!-- 代理业务 -->
@@ -78,6 +86,14 @@
             <el-menu-item index="/authorizations">
               <el-icon><Lock /></el-icon>
               <span>授权管理</span>
+            </el-menu-item>
+            <el-menu-item index="/installations">
+              <el-icon><Download /></el-icon>
+              <span>安装统计</span>
+            </el-menu-item>
+            <el-menu-item index="/project-versions">
+              <el-icon><Upload /></el-icon>
+              <span>版本推送</span>
             </el-menu-item>
           </el-sub-menu>
 
@@ -459,6 +475,8 @@ const parentMap = {
   '/products': [{ path: '/dashboard', title: '业务管理' }],
   '/cards': [{ path: '/dashboard', title: '业务管理' }],
   '/authorizations': [{ path: '/dashboard', title: '业务管理' }],
+  '/installations': [{ path: '/dashboard', title: '业务管理' }],
+  '/project-versions': [{ path: '/dashboard', title: '业务管理' }],
   '/orders': [{ path: '/dashboard', title: '订单与代理' }],
   '/coupons': [{ path: '/dashboard', title: '订单与代理' }],
   '/blacklist': [{ path: '/dashboard', title: '订单与代理' }],
