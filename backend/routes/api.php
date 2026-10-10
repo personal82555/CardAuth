@@ -18,6 +18,7 @@ use App\Controllers\BlacklistController;
 use App\Controllers\NotificationController;
 use App\Controllers\InstallationController;
 use App\Controllers\ProjectVersionController;
+use App\Controllers\AnnouncementController;
 use App\Middleware\AuthMiddleware;
 use App\Middleware\RateLimitMiddleware;
 use App\Middleware\ApiKeyMiddleware;
@@ -42,6 +43,9 @@ $router->group('api/public', function ($router) {
 
     // 卡密查询
     $router->get('cards/query', [PublicController::class, 'queryCard']);
+
+    // 公告推送（客户端/商城）
+    $router->get('announcements', [PublicController::class, 'announcements']);
 
     // 支付方式（前台展示用）
     $router->get('payment/options', [PublicController::class, 'paymentOptions']);
@@ -203,6 +207,15 @@ $router->group('api', function ($router) {
     $router->put('versions/{id}/force', [ProjectVersionController::class, 'toggleForce']);
     $router->put('versions/{id}/latest', [ProjectVersionController::class, 'setLatest']);
     $router->delete('versions/{id}', [ProjectVersionController::class, 'delete']);
+
+    // 公告推送管理 (admin / project_admin 发布; 代理只读不可见菜单)
+    $router->get('announcements', [AnnouncementController::class, 'list']);
+    $router->get('announcements/stats', [AnnouncementController::class, 'list']);
+    $router->get('announcements/{id}', [AnnouncementController::class, 'detail']);
+    $router->post('announcements', [AnnouncementController::class, 'create']);
+    $router->put('announcements/{id}', [AnnouncementController::class, 'update']);
+    $router->delete('announcements/{id}', [AnnouncementController::class, 'delete']);
+    $router->post('announcements/batch-delete', [AnnouncementController::class, 'batchDelete']);
 
     // 黑名单管理（仅管理员）
     $router->group('blacklists', function ($router) {

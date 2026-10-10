@@ -90,6 +90,12 @@ const routes = [
         meta: { title: '版本推送', icon: 'Upload' }
       },
       {
+        path: 'announcements',
+        name: 'Announcements',
+        component: () => import('@/views/Announcements.vue'),
+        meta: { title: '公告推送', icon: 'Bell' }
+      },
+      {
         path: 'coupons',
         name: 'Coupons',
         component: () => import('@/views/admin/Coupons.vue'),

@@ -387,3 +387,32 @@ CREATE TABLE `ca_project_versions` (
     KEY `idx_project_id` (`project_id`),
     KEY `idx_is_latest` (`project_id`,`is_latest`,`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='项目版本/安装包表';
+
+-- ============================================
+-- 14. 公告推送表
+-- ============================================
+DROP TABLE IF EXISTS `ca_announcements`;
+CREATE TABLE `ca_announcements` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `title` VARCHAR(200) NOT NULL COMMENT '公告标题',
+    `content` TEXT NOT NULL COMMENT '公告内容',
+    `type` ENUM('system','update','promo','notice') NOT NULL DEFAULT 'notice' COMMENT '类型: system=系统, update=更新, promo=活动, notice=通知',
+    `target` ENUM('all','admin','agent','client') NOT NULL DEFAULT 'all' COMMENT '推送对象: all=全部, admin=管理端, agent=代理端, client=客户端',
+    `project_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '关联项目ID(空=全部项目)',
+    `is_top` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否置顶: 0=否, 1=是',
+    `is_popup` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '客户端是否弹窗: 0=否, 1=是',
+    `link_url` VARCHAR(500) DEFAULT '' COMMENT '跳转链接(可空)',
+    `status` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '状态: 0=草稿/下线, 1=发布中',
+    `start_at` DATETIME DEFAULT NULL COMMENT '生效时间(空=立即)',
+    `end_at` DATETIME DEFAULT NULL COMMENT '结束时间(空=永久)',
+    `created_by` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '发布人ID',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_status` (`status`),
+    KEY `idx_target` (`target`),
+    KEY `idx_is_top` (`is_top`),
+    KEY `idx_project_id` (`project_id`),
+    KEY `idx_start_end` (`start_at`, `end_at`),
+    KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='公告推送表';

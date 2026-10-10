@@ -750,6 +750,50 @@ class PublicController extends Controller
     }
 
     /**
+     * 获取公告列表（公开/客户端）
+     * GET /api/public/announcements?target=client&project_id=1&limit=10
+     */
+    public function announcements(): void
+    {
+        $db = Database::getInstance();
+        $target = trim((string) ($_GET['target'] ?? 'all'));
+        $projectId = !empty($_GET['project_id']) ? (int) $_GET['project_id'] : null;
+        $limit = min(max((int) ($_GET['limit'] ?? 10), 1), 50);
+
+        $where = "WHERE status = 1
+            AND (start_at IS NULL OR start_at <= NOW())
+            AND (end_at IS NULL OR end_at >= NOW())";
+        $params = [];
+
+        if (in_array($target, ['admin', 'agent', 'client'], true)) {
+            $where .= " AND (target = 'all' OR target = ?)";
+            $params[] = $target;
+        }
+
+        if ($projectId) {
+            $where .= ' AND (project_id IS NULL OR project_id = ?)';
+            $params[] = $projectId;
+        }
+
+        $list = $db->fetchAll(
+            "SELECT id, title, content, type, target, project_id, is_top, is_popup, link_url, created_at
+             FROM {$db->table('announcements')}
+             {$where}
+             ORDER BY is_top DESC, id DESC
+             LIMIT {$limit}",
+            $params
+        );
+
+        // 仅返回弹窗公告给客户端（方便一次拉取）
+        $popup = array_values(array_filter($list, static fn (array $r): bool => (int) $r['is_popup'] === 1));
+
+        $this->success([
+            'list' => $list,
+            'popup' => $popup,
+        ], 'ok');
+    }
+
+    /**
      * 查询订单状态
      */
     public function queryOrder(): void

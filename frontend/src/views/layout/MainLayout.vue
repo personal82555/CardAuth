@@ -71,6 +71,10 @@
               <el-icon><Upload /></el-icon>
               <span>版本推送</span>
             </el-menu-item>
+            <el-menu-item index="/announcements" v-if="canManage">
+              <el-icon><Bell /></el-icon>
+              <span>公告推送</span>
+            </el-menu-item>
           </el-sub-menu>
 
           <!-- 代理业务 -->
@@ -477,6 +481,7 @@ const parentMap = {
   '/authorizations': [{ path: '/dashboard', title: '业务管理' }],
   '/installations': [{ path: '/dashboard', title: '业务管理' }],
   '/project-versions': [{ path: '/dashboard', title: '业务管理' }],
+  '/announcements': [{ path: '/dashboard', title: '业务管理' }],
   '/orders': [{ path: '/dashboard', title: '订单与代理' }],
   '/coupons': [{ path: '/dashboard', title: '订单与代理' }],
   '/blacklist': [{ path: '/dashboard', title: '订单与代理' }],
