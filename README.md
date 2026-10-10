@@ -58,6 +58,23 @@
 - `/docs` 系统介绍与使用文档（含安装统计/版本推送说明）
 - `/installations` 安装统计（v1.1.0）
 - `/project-versions` 版本推送（v1.1.0）
+- `/announcements` 公告推送（v1.2.0）
+
+### 公告推送（v1.2.0）
+
+管理后台 **业务管理 → 公告推送**（仅 admin / project_admin 可发布）：
+
+- 类型：系统 / 更新 / 活动 / 通知
+- 对象：全部 / 管理端 / 代理端 / 客户端
+- 支持置顶、客户端弹窗、起止时间、关联项目、跳转链接、上下线
+
+客户端拉取：
+
+```
+GET /api/public/announcements?target=client&project_id=1&limit=10
+```
+
+响应含 `list`（列表）与 `popup`（需弹窗），仅返回生效中的公告。
 
 ### 订单支付后如何发卡
 
